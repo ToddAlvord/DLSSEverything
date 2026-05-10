@@ -1,4 +1,4 @@
-import React, { JSX, useEffect, useRef, useState } from "react";
+import React, { JSX } from "react";
 import styled from "styled-components";
 
 const StyledTag = styled.span`

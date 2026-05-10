@@ -8,10 +8,17 @@ I made this because I wanted a simple and straight forward way to scan a directo
 - Easily download any nvidia DLSS DLL versions you want to use
 - Easily replace your game's DLSS DLLs with the version of your choice, or revert back to the original. Simply click the drop down to change to a different version.
 
-What games is this intended for?
+### What games is this intended for?
 
 - Single player games / offline games
 - Online co-op games are generally OK to modify ex Baldurs Gate
 - Do not modify DLSS files for any competitive online games, or any games that have anti-cheat software. Most online games have anti cheat software. If you are unsure, do not modify the DLSS files for those games.
+
+### Installation
+You can run this as
+- As an installed application with auto updates. The installer this application uses is called [Squirrel.Windows](https://github.com/squirrel/squirrel.windows). To quote their github: "Installing is Wizard-Free™, with no UAC dialogs, does not require reboot, and is .NET Framework friendly."
+- A standalone app
+
+### Latest Changes - [Changelog](./CHANGELOG.md)
 
 ![Alt text](/images/screenshot.png?raw=true "App Screenshot")

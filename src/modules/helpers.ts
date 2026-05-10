@@ -4,7 +4,9 @@ import { nvidiaDllFolderPath, nvidiaDllTypes, nvidiaDllNames } from "./constants
 import path from "path";
 
 export function getFileVersion(path: string) {
-  return windowsVersionInfo(path).FileVersion.replace(/,/g, ".").slice(0, -2);
+  const info = windowsVersionInfo(path);
+  if (!info?.FileVersion) return "";
+  return info.FileVersion.replace(/,/g, ".").slice(0, -2);
 }
 
 // Recursive function to search through directories

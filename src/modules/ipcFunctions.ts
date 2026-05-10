@@ -1,5 +1,5 @@
 import { shell, BrowserWindow, ipcMain, dialog } from "electron";
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import * as nodePath from "path";
 
 import type { DllDetails, downloadedDlls, dllTypes } from "../types";
@@ -15,10 +15,13 @@ import {
 
 //  Create IPCMain Handlers
 export function createHandlers(mainWindow: Electron.BrowserWindow) {
+  mainWindowRef = mainWindow;
   // Handle download links / intercept dll downloads
   ipcMain.handle("openDownloadLink", handleDownload);
   // Select directory to scan for nvidia dlls
   ipcMain.handle("dialog:scanForNvidiaDlls", recursiveScanDirectoryForNvidiaDLLs(mainWindow));
+  // Scan a specific path for nvidia dlls (for favorites)
+  ipcMain.handle("scanSpecificDirectoryForNvidiaDlls", scanSpecificDirectoryForNvidiaDLLs);
   //  See what dlls we've already downloaded
   ipcMain.handle("findDownloadedNvidiaDLLs", findDownloadedNvidiaDLLs);
   //  Handle changing versions of dll for a given path
@@ -27,6 +30,8 @@ export function createHandlers(mainWindow: Electron.BrowserWindow) {
   ipcMain.handle("openDownloadedDllsFolder", () => {
     shell.openPath(nvidiaDllFolderPath);
   });
+  //  Delete a downloaded DLL version
+  ipcMain.handle("deleteDownloadedDll", deleteDownloadedDll);
 
   //  If we close the main window, close the download window too
   mainWindow.on("close", () => {
@@ -50,24 +55,27 @@ const changeDllVersion = async (
   const original = await getOriginalFileDetails(path);
   //  Handle changing back to original version
   if (versionToSet.includes("Original")) {
-    fs.renameSync(path + ".orig", path);
-    return {
-      path,
-      version: original.version,
-      type,
-      original: {
-        exists: false,
-        version: null,
-      },
-    };
+    if (original.version) {
+      await fs.rename(path + ".orig", path);
+      return {
+        path,
+        version: original.version,
+        type,
+        original: {
+          exists: false,
+          version: null,
+        },
+      };
+    }
+    return;
   }
 
   //  If original doesn't exist, backup the current version as the original
   if (!original.exists) {
-    fs.renameSync(path, path + ".orig");
+    await fs.rename(path, path + ".orig");
   }
   const pathToDownloadedVersion = createPathToDownloadedDll(type, versionToSet);
-  fs.copyFileSync(pathToDownloadedVersion, path);
+  await fs.copyFile(pathToDownloadedVersion, path);
   return {
     path,
     version: versionToSet,
@@ -81,6 +89,7 @@ const changeDllVersion = async (
 
 //  Open download URL, Intercept zip downloads and process them
 let downloadWindow: Electron.BrowserWindow;
+let mainWindowRef: Electron.BrowserWindow;
 const handleDownload = (event: Electron.IpcMainInvokeEvent, url: string) => {
   if (downloadWindow && !downloadWindow.isDestroyed()) {
     downloadWindow.close();
@@ -97,11 +106,10 @@ const handleDownload = (event: Electron.IpcMainInvokeEvent, url: string) => {
 
   const ses = downloadWindow.webContents.session;
 
-  return new Promise((res, rej) => {
+  return new Promise((res) => {
     function downloadListener(
-      event: Electron.Event,
-      item: Electron.DownloadItem,
-      webContents: Electron.WebContents
+      _event: Electron.Event,
+      item: Electron.DownloadItem
     ) {
       const savePath = nodePath.join(nvidiaDllFolderPath, item.getFilename());
 
@@ -118,6 +126,7 @@ const handleDownload = (event: Electron.IpcMainInvokeEvent, url: string) => {
         if (state === "completed") {
           const parseResult = await parseDllZip(savePath);
           res(parseResult);
+          mainWindowRef.webContents.send("download-complete", parseResult);
         } else {
           res("not-downloaded");
         }
@@ -143,6 +152,24 @@ const findDownloadedNvidiaDLLs = async () => {
   return mappedByType;
 };
 
+//  Scan a specific directory for NVIDIA DLLs (used for favorites)
+const scanSpecificDirectoryForNvidiaDLLs = async (event: Electron.IpcMainInvokeEvent, path: string) => {
+  let mappedTypeVersion: Promise<DllDetails>[] = [];
+  if (path) {
+    const dlssDLLFiles = await findNvidiaDllFiles(path);
+    mappedTypeVersion = dlssDLLFiles.map(async (path) => {
+      return {
+        path,
+        version: getFileVersion(path),
+        type: dllTypeMap[path.slice(-5)],
+        original: await getOriginalFileDetails(path),
+      };
+    });
+  }
+
+  return Promise.all(mappedTypeVersion);
+};
+
 //  Recursively scan a directory for nvdiaia DLLs
 const recursiveScanDirectoryForNvidiaDLLs = (mainWindow: Electron.BrowserWindow) => async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -162,5 +189,16 @@ const recursiveScanDirectoryForNvidiaDLLs = (mainWindow: Electron.BrowserWindow)
     });
   }
 
-  return Promise.all(mappedTypeVersion);
+  return { scannedPath: result?.filePaths?.[0], dlls: await Promise.all(mappedTypeVersion)};
+};
+
+//  Delete a downloaded DLL version
+const deleteDownloadedDll = async (_event: Electron.IpcMainInvokeEvent, type: dllTypes, version: string) => {
+  const filePath = createPathToDownloadedDll(type, version);
+  try {
+    await fs.unlink(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 };

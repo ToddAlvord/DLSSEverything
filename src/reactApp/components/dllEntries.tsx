@@ -1,6 +1,5 @@
 import React from "react";
 import styled from "styled-components";
-import "typeface-roboto/index.css";
 
 import { ButtonWithDropDown } from "../components/buttonDropDown";
 import type { DllDetails, VersionsMap } from "../../types";

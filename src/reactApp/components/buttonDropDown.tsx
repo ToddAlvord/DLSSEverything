@@ -45,7 +45,7 @@ export const ButtonWithDropDown = ({
   handleNewVersionSelected: ({ path, version, type, original }: DllDetails) => void;
 }) => {
   const [open, setOpen] = useState(false);
-  const drop = useRef(null);
+  const drop = useRef<HTMLDivElement>(null);
   function handleClick(e: MouseEvent) {
     if (
       !(e.target as HTMLElement)?.closest(`.${drop.current?.className}`) ||
