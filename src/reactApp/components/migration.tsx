@@ -139,7 +139,7 @@ export function Migration({ scannedDllDetails, typeVersionsMap, onVersionMigrate
           {allTypes.map(type => {
             const sourceVersions = modifiedVersionsByType[type];
             const targetVersions = typeVersionsMap[type].filter(v => v !== migrateSource[type]);
-            const dllCount = (v: string) => scannedDllDetails.filter(d => d.type === type && d.version === v).length;
+            const dllCount = (v: string) => scannedDllDetails.filter(d => d.type === type && d.version === v && d.original.exists).length;
 
             return (
               <MigrationRowDiv key={type}>
