@@ -1,7 +1,7 @@
 {
   "name": "dlss-everything",
   "productName": "DLSSEverything",
-  "version": "0.9.0",
+  "version": "1.1.1",
   "description": "Manager of DLSS Files for any games that use nvidia dlls",
   "main": ".webpack/main",
   "repository": {
